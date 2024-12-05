@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polygon to WKT Converter</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Leaflet.draw CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+    <style>
+        #map {
+            height: 600px;
+        }
+        #wkt-output {
+            width: 100%;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Draw a Polygon and Get WKT</h1>
+    <div id="map"></div>
+    <h2>WKT Output:</h2>
+    <textarea id="wkt-output" readonly></textarea>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Leaflet.draw JS -->
+    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+    <!-- Terraformer and WKT Parser -->
+    <script src="https://unpkg.com/terraformer@1.0.12/dist/terraformer.min.js"></script>
+    <script src="https://unpkg.com/terraformer-wkt-parser@1.2.1/dist/terraformer-wkt-parser.min.js"></script>
+    <!-- Your custom script -->
+    <script>
+      // Initialize the map
+var map = L.map('map').setView([0, 0], 2);
+
+// Add OpenStreetMap tiles
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// Initialize the FeatureGroup to store editable layers
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+// Set up the draw control
+var drawControl = new L.Control.Draw({
+    draw: {
+        polyline: false,
+        rectangle: false,
+        circle: false,
+        marker: false,
+        circlemarker: false,
+        polygon: {
+            allowIntersection: false,
+            showArea: true,
+            metric: true,
+            repeatMode: false
+        }
+    },
+    edit: {
+        featureGroup: drawnItems,
+        remove: true
+    }
+});
+map.addControl(drawControl);
+
+function updateWKTOutput(layer) {
+    // Convert the layer to GeoJSON
+    var geojson = layer.toGeoJSON();
+
+    // Get the coordinates array
+    var coordinates = geojson.geometry.coordinates[0];
+
+    // Construct the WKT string
+    var wkt = 'POLYGON((' + coordinates.map(function(coord) {
+        return coord[0] + ' ' + coord[1];
+    }).join(', ') + '))';
+
+    // Include SRID=4326; for SQL Server
+    var wktWithSrid = 'SRID=4326;' + wkt;
+
+    // Display the WKT in the textarea
+    document.getElementById('wkt-output').value = wktWithSrid;
+}
+
+// Handle the creation of new shapes
+map.on(L.Draw.Event.CREATED, function (e) {
+    var layer = e.layer;
+
+    drawnItems.addLayer(layer);
+
+    updateWKTOutput(layer);
+});
+
+// Handle edits
+map.on('draw:edited', function (e) {
+    e.layers.eachLayer(function (layer) {
+        updateWKTOutput(layer);
+    });
+});
+
+// Handle deletions
+map.on('draw:deleted', function (e) {
+    // Clear the WKT output when shapes are deleted
+    document.getElementById('wkt-output').value = '';
+});
+
+    </script>
+
+</body>
+</html>
